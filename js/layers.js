@@ -36,7 +36,8 @@ addLayer("b", { // Click Layer, includes click power.
     clickables: {
         11: {
             title: "Click Me!",
-            onClick() {return onButtonClick(1)},
+            onClick() {onButtonClick(1)},
+            onHold() {onButtonClick(1)},
             canClick() {return true}
         },
         12: {
