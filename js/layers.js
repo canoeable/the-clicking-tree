@@ -43,7 +43,7 @@ addLayer("b", { // Click Layer, includes click power.
         12: {
             title: "Clicking Force Refill",
             display() {return "Refill your clicking force if it is below "+format(clickPowerFillable(1))+"."},
-            onClick() {if(clickPowerFillable(0)) player.clickpower = player.maxcp},
+            onClick() {if(clickPowerFillable(0)) player.clickpower = calcMaxCP()},
             canClick() {return true}
         },
         13: {
@@ -230,7 +230,7 @@ addLayer("b", { // Click Layer, includes click power.
         },
     },
     automate() {
-        player.maxcp = calcMaxCP()
+        //player.maxcp = calcMaxCP()
     },
     microtabs: {
         tabs: {
@@ -253,7 +253,9 @@ addLayer("b", { // Click Layer, includes click power.
     doReset(resettingLayer) {
         let keep = [];
         let keepupgs = [];
-        if(!inChallenge('p', 11)) {if(hasUpgrade('p', 14)) keepupgs.push(23)}
+        if(hasUpgrade('p', 14)) keepupgs.push(23)
+        if(hasUpgrade('p', 24)) keep.push("achievements")
+        if(hasUpgrade('p', 25)) keepupgs.push(11, 12, 13, 14, 15, 16, 17, 21, 22, 23, 24, 31, 32, 33)
         layerDataReset(this.layer, keep)
         player.b.upgrades = keepupgs
         player.clicks = D(0)
@@ -262,19 +264,20 @@ addLayer("b", { // Click Layer, includes click power.
     update(diff) {
         onButtonClick(calcAutoPerSec().mul(diff))
         if(player.cgcf) { if (player.clickpower.lte(calcMaxCP())) player.clickpower = player.clickpower.add(calcRegenCP().mul(diff))}
-    }
+    },
+    autoUpgrade() {return hasUpgrade('p', 22)},
 })
 
 addLayer("p", {
     name: "prestige", // This is optional, only used in a few places, If absent it just uses the layer id.
     symbol: "P", // This appears on the layer's node. Default is the id with the first letter capitalized
-    position: 1, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
+    position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
     startData() { return {
         unlocked: false,
 		points: new Decimal(0),
     }},
     color: "#1997f7",
-    requires() {return new Decimal(6e6).mul(D(10).pow(player.p.points))}, // Can be a function that takes requirement increases into account
+    requires() {if(!hasUpgrade('ap', 12)) {return new Decimal(6e6).mul(D(10).pow(player.p.points)).div(tmp['ap'].effect)} else {return new Decimal(6e6).mul(D(2).pow(player.p.points)).div(tmp['ap'].effect)}}, // Can be a function that takes requirement increases into account
     resource: "prestige points", // Name of prestige currency
     baseResource: "points", // Name of resource prestige is based on
     baseAmount() {return player.points}, // Get the current amount of baseResource
@@ -282,6 +285,10 @@ addLayer("p", {
     exponent: 0.1, // Prestige currency exponent
     gainMult() { // Calculate the multiplier for main currency from bonuses
         mult = new Decimal(1)
+        if(hasUpgrade('mini', 26)) mult = mult.mul(1.2)
+        if(hasUpgrade('ap', 11)) mult = mult.add(1.2)
+        if(hasUpgrade('ap', 13)) mult = mult.mul(2)
+        if(hasMilestone('t', 1)) mult = mult.mul(3.33)
         return mult
     },
     gainExp() { // Calculate the exponent on main currency from bonuses
@@ -297,7 +304,7 @@ addLayer("p", {
         if(player.p.unlocked) s = true
         return s
     },
-    branches: ['b'],
+    branches: ['b', 'mini', 'ap'],
     upgrades: {
         11: {
             title: "I like points",
@@ -325,31 +332,261 @@ addLayer("p", {
             effectDisplay() {return format(upgradeEffect(this.layer, this.id))+"x"},
             unlocked() {return hasUpgrade('p', 13) || hasUpgrade(this.layer, this.id)},
             style: {
-                "width": "200px"
+                "width": "250px"
             }
         },
         21: {
             title: "Motivation",
-            description: "You find some motivation! Boost most things in layer C by x1.69, and unlock 1 challenge",
+            description: "You find some motivation! Boost most things in layer C by x1.69, and unlock 1 milestone",
             cost: new Decimal(2.5),
-            effect() {if(hasChallenge('p', 11)) {return D(1.69).pow(2)} else {return D(1.69)}},
+            effect() {if(hasMilestone('p', 1)) {return D(1.69).pow(2)} else {return D(1.69)}},
             effectDisplay() {return format(upgradeEffect(this.layer, this.id))+"x"},
             unlocked() {return hasUpgrade('p', 14) || hasUpgrade(this.layer, this.id)},
         },
-       // 22: {
-        //    title: "Automation",
-       //     description: "Autobuy C upgrades",
-       //     cost: new Decimal(3)
-        //}
+        22: {
+            title: "Automation",
+            description: "Autobuy C upgrades",
+            cost: new Decimal(4),
+            unlocked() {return hasUpgrade('mini', 26) || hasUpgrade(this.layer, this.id)},
+        },
+        23: {
+            title: "Automation^2",
+            description: "Click force generation x25",
+            cost: new Decimal(4),
+            unlocked() {return hasUpgrade('p', 22) || hasUpgrade(this.layer, this.id)},
+        },
+        24: {
+            title: "Automation^3",
+            description: "Keep goals on reset",
+            cost: new Decimal(4),
+            unlocked() {return hasUpgrade('p', 23) || hasUpgrade(this.layer, this.id)},
+        },
+        25: {
+            title: "Automation^4",
+            description: "Keep upgrades on reset",
+            cost: new Decimal(4),
+            unlocked() {return hasUpgrade('p', 24) || hasUpgrade(this.layer, this.id)},
+        },
     },
-    challenges: {
-        11: {
-            name: "No Prestige",
-            challengeDescription: "Prestige upgrades have no effect, but click force dosent decay.",
-            goalDescription: "33,333,333 points",
-            rewardDescription: "Square the upgrade that unlocked this challenge, and unlock a mini-tree.",
-            canComplete() {return player.points.gte(33333333)},
+    milestones: {
+        1: {
+            requirementDescription: "4 prestige points",
+            effectDescription: "^2 the upgrade that unlocked this, and unlock a minigame",
+            done() {return player.p.points.gte(4)},
             unlocked() {return hasUpgrade('p', 21)}
         },
     },
+    doReset(resettingLayer) {
+        if(layers[resettingLayer].row <= layers[this.layer].row) return
+        let keep = [];
+        let keepupgs = [];
+        if(hasMilestone('t', 2)) keepupgs = [22, 23, 24, 25]
+        layerDataReset(this.layer, keep)
+        player.p.upgrades = keepupgs
+    }
+})
+
+addLayer("ap", {
+    name: "alternate prestige points", // This is optional, only used in a few places, If absent it just uses the layer id.
+    symbol: "AP", // This appears on the layer's node. Default is the id with the first letter capitalized
+    position: 1, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
+    startData() { return {
+        unlocked: false,
+		points: new Decimal(0),
+    }},
+    color: "#e66808",
+    requires() {return new Decimal(5)}, // Can be a function that takes requirement increases into account
+    resource: "alternate prestige points", // Name of prestige currency
+    baseResource: "prestige points", // Name of resource prestige is based on
+    baseAmount() {return player.p.points}, // Get the current amount of baseResource
+    type: "static", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
+    exponent: 1, // Prestige currency exponent
+    gainMult() { // Calculate the multiplier for main currency from bonuses
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() { // Calculate the exponent on main currency from bonuses
+        return new Decimal(1)
+    },
+    row: 1,
+    layerShown(){
+        let s = false
+        if(player.p.unlocked) s = true
+        return s
+    },
+    effect() {return D(5).pow(player.ap.best).max(1)},
+    effectDescription() {return "dividing prestige requirement by <h2 style='color:#e66808;text-shadow:0px 0px 10px;'>/"+format(tmp['ap'].effect)+"</h2>"},
+    upgrades: {
+        11: {
+            title: "Alternate Upgrade",
+            description: "+0.8 prestige point multiplier and 10000x point gain",
+            cost: new Decimal(1),
+        },
+        12: {
+            title: "Prestige Boost",
+            description: "Prestige scaling is nerfed",
+            cost: new Decimal(2),
+            unlocked() {return hasUpgrade('ap', 11)},
+        },
+        13: {
+            title: "Prestige Boost (real)",
+            description: "x2 prestige points, x123.345 points",
+            cost: new Decimal(3),
+            unlocked() {return hasUpgrade('ap', 12)},
+        },
+    },
+    roundUpCost: true,
+})
+
+addLayer("t", {
+    name: "taps", // This is optional, only used in a few places, If absent it just uses the layer id.
+    symbol: "T", // This appears on the layer's node. Default is the id with the first letter capitalized
+    position: 0, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
+    startData() { return {
+        unlocked: false,
+		points: new Decimal(0),
+    }},
+    color: "#CCD011",
+    requires() {return new Decimal(4)}, // Can be a function that takes requirement increases into account
+    resource: "taps", // Name of prestige currency
+    baseResource: "alternate prestige points", // Name of resource prestige is based on
+    baseAmount() {return player.ap.points}, // Get the current amount of baseResource
+    type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
+    exponent: 0.25, // Prestige currency exponent
+    gainMult() { // Calculate the multiplier for main currency from bonuses
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() { // Calculate the exponent on main currency from bonuses
+        return new Decimal(1)
+    },
+    row: 2,
+    layerShown(){
+        let s = false
+        if(player.ap.unlocked) s = true
+        return s
+    },
+    milestones: {
+        1: {
+            requirementDescription: "1 tap",
+            effectDescription: "3.33x prestige points, x25 max click force and x12.345 timewall gain",
+            done() {return player.t.best.gte(1)},
+        },
+        2: {
+            requirementDescription: "4 taps",
+            effectDescription: "Always have prestige upgrades 22-25",
+            done() {return player.t.best.gte(4)},
+        },
+    },
+    branches: ['p', 'ap']
+})
+
+addLayer("mini", {
+    name: "timewalls", // This is optional, only used in a few places, If absent it just uses the layer id.
+    symbol: "T", // This appears on the layer's node. Default is the id with the first letter capitalized
+    position: 1, // Horizontal position within a row. By default it uses the layer id and sorts in alphabetical order
+    startData() { return {
+        unlocked: true,
+		points: new Decimal(10),
+        timewalls: new Decimal(10),
+    }},
+    color: "#78a9fe",
+    requires() {return new Decimal(1e308)}, // Can be a function that takes requirement increases into account
+    resource: "timewalls", // Name of prestige currency
+    baseResource: "points", // Name of resource prestige is based on
+    baseAmount() {return player.points}, // Get the current amount of baseResource
+    type: "normal", // normal: cost to gain currency depends on amount gained. static: cost depends on how much you already have
+    exponent: 0.000001, // Prestige currency exponent
+    gainMult() { // Calculate the multiplier for main currency from bonuses
+        mult = new Decimal(1)
+        return mult
+    },
+    gainExp() { // Calculate the exponent on main currency from bonuses
+        return new Decimal(1)
+    },
+    row: "side",
+    layerShown(){
+        let s = false
+        if(hasMilestone('p', 1)) s = true
+        return s
+    },
+    tabFormat: [
+        ["display-text", function() {return "You have <h2 style='color:ffffff;text-shadow:0px 0px 10px;'>"+format(player.mini.points)+"</h2> timewalls, making its gain <h2 style='color:ffffff;text-shadow:0px 0px 10px;'>"+format(calcTimeWallGain())+"/s</h2>"}],
+        "upgrades"
+    ],
+    update(diff) {
+        player.mini.points = player.mini.points.add(calcTimeWallGain().mul(diff))
+        player.mini.points = player.mini.points.min('1.1e2500')
+    },
+    upgrades: {
+        11: {
+            title: "Alright this is too slow",
+            description: "Timewall gain is faster (log100(timewalls) -> log77(timewalls))",
+            cost: new Decimal(100),
+        },
+        12: {
+            title: "Still slow..",
+            description: "Timewall gain is faster (log77(timewalls) -> log60(timewalls))",
+            cost: new Decimal(500),
+            unlocked() {return hasUpgrade('mini', 11)},
+        },
+        13: {
+            title: "these layers have like no relation to each other",
+            description: "Timewall gain is faster (log60(timewalls) -> log33(timewalls))",
+            cost: new Decimal(500.1),
+            unlocked() {return hasUpgrade('mini', 12)},
+        },
+        14: {
+            title: "aaaaaa",
+            description: "Timewall gain is faster (x10)",
+            cost: new Decimal(666),
+            unlocked() {return hasUpgrade('mini', 13)},
+        },
+        15: {
+            title: "upgrade name here",
+            description: "Timewall gain is faster (log33(timewalls) -> log18(timewalls))",
+            cost: new Decimal(2222),
+            unlocked() {return hasUpgrade('mini', 14)},
+        },
+        21: {
+            title: "36",
+            description: "Timewall gain is faster (log18(timewalls) -> log10(timewalls))",
+            cost: new Decimal(6666),
+            unlocked() {return hasUpgrade('mini', 15)},
+        },
+        22: {
+            title: "upgrade 7 of timewalls",
+            description: "Timewall gain is faster (log10(timewalls) -> log2(timewalls))",
+            cost: new Decimal(12321),
+            unlocked() {return hasUpgrade('mini', 21)},
+        },
+        23: {
+            title: "no more log",
+            description: "Timewall gain is faster (log2(timewalls) -> timewalls/10), but upgrade aaaaaa has no effect",
+            cost: new Decimal(25000),
+            unlocked() {return hasUpgrade('mini', 22)},
+        },
+        24: {
+            title: "x2",
+            description: "Timewall gain is faster (timewalls/10 -> timewalls*2)",
+            cost: new Decimal(1e12),
+            unlocked() {return hasUpgrade('mini', 23)},
+        },
+        25: {
+            title: "245",
+            description: "Timewall gain is faster (timewalls*2 -> timewalls*10,000)",
+            cost: new Decimal(1e200),
+            unlocked() {return hasUpgrade('mini', 24)},
+        },
+        26: {
+            title: "un-timewalled",
+            description: "Prestige points x1.2",
+            cost: new Decimal('1e2500'),
+            unlocked() {return hasUpgrade('mini', 25)},
+        },
+    },
+    doReset(resettingLayer) {
+        if(layers[resettingLayer].row >= 2) player.mini.points = new Decimal(10)
+        if(layers[resettingLayer].row >= 2) player.mini.upgrades = [];
+    }
 })

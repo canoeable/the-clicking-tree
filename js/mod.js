@@ -20,7 +20,7 @@ let VERSION = {
 let changelog = `<h1>Changelog:</h1><br>
 	<h3>v0.1</h3><br>
 		- Game was made.<br>
-		- Endgame: Completed 'No Prestige' challenge<br>
+		- Endgame: 4 taps<br>
 		- Probably poorly balanced<br>
 		- Tip: buy are before names<br>
 		- My first public mod!`
@@ -58,19 +58,19 @@ function addedPlayerData() { return {
 	clicks: D(0),
 	clickpower: D(1),
 	cpdecay: D(0.05),
-	maxcp: D(1),
+	//maxcp: D(1),
 	canfillcp: false,
 	cgcf: true,
 }}
 
 // Display extra things at the top of the page
 var displayThings = [ function() {if(inChallenge('p', 11)) return "You are "+format(player.points.log10().div(D(3.33e7).log(10)).mul(100).max(0).min(100))+"% to completion of the challenge"}, 
-function() {if(player.p.unlocked) "Prestige points boost their requirement"}
+function() {if(player.p.unlocked) return "Prestige points boost their requirement"}
 ]
 
 // Determines when the game "ends"
 function isEndgame() {
-	return hasChallenge('p', 11)
+	return player.t.points.gte(4)
 }
 
 
@@ -90,6 +90,7 @@ function maxTickLength() {
 // Use this if you need to undo inflation from an older version. If the version is older than the version that fixed the issue,
 // you can cap their current resources with this.
 function fixOldSave(oldVersion){
+	gameEnded = false
 }
 
 function clickPowerFillable(x) {
@@ -97,7 +98,7 @@ function clickPowerFillable(x) {
 	let req = D(1)
 	if(hasUpgrade('b', 15)) req = calcMaxCP().mul(0.05)
 	if(hasUpgrade('b', 17)) req = calcMaxCP().mul(0.125)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) req = req.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 21)) req = req.mul(upgradeEffect('p', 21))
 	if(player.clickpower.gte(req)) can = false
 	if(inChallenge('p', 11)) can = true
 	if(x==0)return can
@@ -111,9 +112,11 @@ function getPointMul() {
 	base = base.mul(calcAchMult())
 	if(hasUpgrade('b', 32)) base = base.mul(5)
 	if(hasUpgrade('b', 33)) base = base.mul(3)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 11)) base = base.mul(3.33333)}
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 12)) base = base.add(0.000000000000000001)}
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 11)) base = base.mul(3.33333)
+	if(hasUpgrade('p', 12)) base = base.add(0.000000000000000001)
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
+	if(hasUpgrade('ap', 11)) base = base.mul(10000)
+	if(hasUpgrade('ap', 13)) base = base.mul(123.345)
 	return base
 }
 
@@ -137,7 +140,8 @@ function calcMaxCP() {
 	if(hasUpgrade('b', 31)) base = base.pow(1.15)
 	if(hasUpgrade('b', 15)) base = base.mul(upgradeEffect('b', 15))
 	if(hasUpgrade('b', 21)) base = base.mul(upgradeEffect('b', 21))
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
+	if(hasMilestone('t', 1)) base = base.mul(25)
 	return base
 }
 
@@ -146,8 +150,8 @@ function calcAutoPerSec() {
 	if(hasUpgrade('b', 12)) base = base.mul(4)
 	if(hasUpgrade('b', 16)) base = base.mul(5)
 	if(hasUpgrade('b', 22)) base = base.mul(5)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 13)) base = base.mul(upgradeEffect('p', 13))}
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 13)) base = base.mul(upgradeEffect('p', 13))
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
 	return base
 }
 
@@ -156,15 +160,16 @@ function calcHoldPerSec() {
 	if(hasUpgrade('b', 14)) base = base.add(2)
 	if(hasUpgrade('b', 16)) base = base.add(1)
 	if(hasUpgrade('b', 22)) base = base.add(2)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
 	return base
 }
 
 function calcRegenCP() {
 	let base = D(0)
 	if(hasUpgrade('b', 23)) base = base.add(5)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 14)) base = base.mul(upgradeEffect('p', 14))}
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 14)) base = base.mul(upgradeEffect('p', 14))
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
+	if(hasUpgrade('p', 23)) base = base.mul(25)
 	return base
 }
 
@@ -180,6 +185,22 @@ function calcAchMult() {
 	if(hasAchievement('b', 18)) base = D(4.947)
 	if(hasAchievement('b', 19)) base = D(6)
 	if(!hasUpgrade('b', 24)) base = D(1)
-	if(!inChallenge('p', 11)) {if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))}
+	if(hasUpgrade('p', 21)) base = base.mul(upgradeEffect('p', 21))
 	return base
+}
+
+function calcTimeWallGain() {
+	let gain = player.mini.points.log(100)
+	if(hasUpgrade('mini', 11)) gain = player.mini.points.log(77)
+	if(hasUpgrade('mini', 12)) gain = player.mini.points.log(60)
+	if(hasUpgrade('mini', 13)) gain = player.mini.points.log(33)
+	if(hasUpgrade('mini', 15)) gain = player.mini.points.log(18)
+	if(hasUpgrade('mini', 21)) gain = player.mini.points.log(10)
+	if(hasUpgrade('mini', 22)) gain = player.mini.points.log(2)
+	if(hasUpgrade('mini', 14)) gain = gain.mul(10)
+	if(hasUpgrade('mini', 23)) gain = player.mini.points.div(10)
+	if(hasUpgrade('mini', 24)) gain = player.mini.points.mul(2)
+	if(hasUpgrade('mini', 25)) gain = player.mini.points.mul(10000)
+	if(hasMilestone('t', 1)) gain = gain.mul(12.345)
+	return gain
 }
