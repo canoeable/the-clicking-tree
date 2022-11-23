@@ -37,7 +37,6 @@ addLayer("b", { // Click Layer, includes click power.
         11: {
             title: "Click Me!",
             onClick() {return onButtonClick(1)},
-            onHold() {return onButtonClick(calcHoldPerSec().div(20))},
             canClick() {return true}
         },
         12: {
@@ -82,7 +81,7 @@ addLayer("b", { // Click Layer, includes click power.
         },
         14: {
             title: "hard",
-            description: "x6.66 max clicking force. You can hold to click twice a second.",
+            description: "x6.66 max clicking force",
             cost: new Decimal(666),
             currencyDisplayName: "points",
             currencyInternalName: "points",
@@ -101,7 +100,7 @@ addLayer("b", { // Click Layer, includes click power.
         },
         16: {
             title: "think",
-            description: "x5 autoclick rate. +1 held clicks per second.",
+            description: "x5 autoclick rate",
             cost: new Decimal(5000),
             currencyDisplayName: "points",
             currencyInternalName: "points",
@@ -129,7 +128,7 @@ addLayer("b", { // Click Layer, includes click power.
         },
         22: {
             title: "layer",
-            description: "x5 autoclick rate. +2 held clicks per second.",
+            description: "x5 autoclick rate",
             cost: new Decimal(44444),
             currencyDisplayName: "points",
             currencyInternalName: "points",
